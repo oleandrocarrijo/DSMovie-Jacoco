@@ -5,6 +5,7 @@ import com.devsuperior.dsmovie.entities.MovieEntity;
 import com.devsuperior.dsmovie.repositories.MovieRepository;
 import com.devsuperior.dsmovie.services.exceptions.ResourceNotFoundException;
 import com.devsuperior.dsmovie.tests.MovieFactory;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ public class MovieServiceTests {
 	private MovieRepository repository;
 
 	private String movieName;
-	private Long existingID, nonExistingId;
+	private Long existingMovieId, nonExistingMovieId;
 	private PageImpl<MovieEntity> page;
 	private MovieEntity movie;
 	private MovieDTO movieDTO;
@@ -40,8 +41,8 @@ public class MovieServiceTests {
 	@BeforeEach
 	void setUp() throws Exception{
 		movieName = "Test Movie";
-		existingID = 1L;
-		nonExistingId = 2L;
+		existingMovieId = 1L;
+		nonExistingMovieId = 2L;
 
 		movie = MovieFactory.createMovieEntity(movieName);
 		movieDTO = new MovieDTO(movie);
@@ -49,10 +50,13 @@ public class MovieServiceTests {
 
 		Mockito.when(repository.searchByTitle(any(), (Pageable) any())).thenReturn(page);
 
-		Mockito.when(repository.findById(existingID)).thenReturn(Optional.of(movie));
-		Mockito.when(repository.findById(nonExistingId)).thenReturn(Optional.empty());
+		Mockito.when(repository.findById(existingMovieId)).thenReturn(Optional.of(movie));
+		Mockito.when(repository.findById(nonExistingMovieId)).thenReturn(Optional.empty());
 
 		Mockito.when(repository.save(any())).thenReturn(movie);
+
+		Mockito.when(repository.getReferenceById(existingMovieId)).thenReturn(movie);
+		Mockito.when(repository.getReferenceById(nonExistingMovieId)).thenThrow(EntityNotFoundException.class);
 	}
 
 	@Test
@@ -71,10 +75,10 @@ public class MovieServiceTests {
 	@Test
 	public void findByIdShouldReturnMovieDTOWhenIdExists() {
 
-		MovieDTO result = service.findById(existingID);
+		MovieDTO result = service.findById(existingMovieId);
 
 		Assertions.assertNotNull(result);
-		Assertions.assertEquals(result.getId(), existingID);
+		Assertions.assertEquals(result.getId(), existingMovieId);
 		Assertions.assertEquals(result.getTitle(), movieName);
 	}
 	
@@ -82,7 +86,7 @@ public class MovieServiceTests {
 	public void findByIdShouldThrowResourceNotFoundExceptionWhenIdDoesNotExist() {
 
 		Assertions.assertThrows(ResourceNotFoundException.class, () -> {
-			MovieDTO result = service.findById(nonExistingId);
+			MovieDTO result = service.findById(nonExistingMovieId);
 		});
 	}
 	
@@ -98,10 +102,20 @@ public class MovieServiceTests {
 	
 	@Test
 	public void updateShouldReturnMovieDTOWhenIdExists() {
+
+		MovieDTO result = service.update(existingMovieId, movieDTO);
+
+		Assertions.assertNotNull(result);
+		Assertions.assertEquals(result.getId(), movie.getId());
+		Assertions.assertEquals(result.getTitle(), movie.getTitle());
 	}
 	
 	@Test
 	public void updateShouldThrowResourceNotFoundExceptionWhenIdDoesNotExist() {
+
+		Assertions.assertThrows(ResourceNotFoundException.class, () -> {
+			MovieDTO result = service.update(nonExistingMovieId, movieDTO);
+		});
 	}
 	
 	@Test
