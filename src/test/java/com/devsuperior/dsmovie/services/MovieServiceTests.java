@@ -3,6 +3,7 @@ package com.devsuperior.dsmovie.services;
 import com.devsuperior.dsmovie.dto.MovieDTO;
 import com.devsuperior.dsmovie.entities.MovieEntity;
 import com.devsuperior.dsmovie.repositories.MovieRepository;
+import com.devsuperior.dsmovie.services.exceptions.ResourceNotFoundException;
 import com.devsuperior.dsmovie.tests.MovieFactory;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 
@@ -30,6 +32,7 @@ public class MovieServiceTests {
 	private MovieRepository repository;
 
 	private String movieName;
+	private Long existingID, nonExistingId;
 	private PageImpl<MovieEntity> page;
 	private MovieEntity movie;
 	private MovieDTO movieDTO;
@@ -37,12 +40,17 @@ public class MovieServiceTests {
 	@BeforeEach
 	void setUp() throws Exception{
 		movieName = "Test Movie";
+		existingID = 1L;
+		nonExistingId = 2L;
 
 		movie = MovieFactory.createMovieEntity(movieName);
 		movieDTO = new MovieDTO(movie);
 		page = new PageImpl<>(List.of(movie));
 
 		Mockito.when(repository.searchByTitle(any(), (Pageable) any())).thenReturn(page);
+
+		Mockito.when(repository.findById(existingID)).thenReturn(Optional.of(movie));
+		Mockito.when(repository.findById(nonExistingId)).thenReturn(Optional.empty());
 	}
 
 	@Test
@@ -60,10 +68,20 @@ public class MovieServiceTests {
 	
 	@Test
 	public void findByIdShouldReturnMovieDTOWhenIdExists() {
+
+		MovieDTO result = service.findById(existingID);
+
+		Assertions.assertNotNull(result);
+		Assertions.assertEquals(result.getId(), existingID);
+		Assertions.assertEquals(result.getTitle(), movieName);
 	}
 	
 	@Test
 	public void findByIdShouldThrowResourceNotFoundExceptionWhenIdDoesNotExist() {
+
+		Assertions.assertThrows(ResourceNotFoundException.class, () -> {
+			MovieDTO result = service.findById(nonExistingId);
+		});
 	}
 	
 	@Test
